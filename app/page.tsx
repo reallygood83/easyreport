@@ -1,103 +1,218 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { useDropzone } from 'react-dropzone';
+import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [files, setFiles] = useState<File[]>([]);
+  const [sample, setSample] = useState<string>('');
+  const [useSampleFile, setUseSampleFile] = useState<boolean>(false);
+  const [prompt, setPrompt] = useState<string>('');
+  const [language, setLanguage] = useState<string>('Korean');
+  const [volume, setVolume] = useState<string>('medium');
+  const [needsTable, setNeedsTable] = useState<boolean>(false);
+  const [needsGraph, setNeedsGraph] = useState<boolean>(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  const onDrop = (acceptedFiles: File[]) => {
+    if (files.length + acceptedFiles.length > 5) {
+      alert('최대 5개의 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    setFiles([...files, ...acceptedFiles]);
+  };
+
+  const { getRootProps, getInputProps } = useDropzone({ onDrop, accept: '.md', maxFiles: 5 });
+
+  const handleSampleFileDrop = (acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      const reader = new FileReader();
+      reader.onload = (e) => setSample(e.target.result as string);
+      reader.readAsText(acceptedFiles[0]);
+    }
+  };
+
+  const sampleDropzone = useDropzone({ onDrop: handleSampleFileDrop, accept: '.md', maxFiles: 1 });
+
+  const handleGenerate = async () => {
+    if (files.length === 0) {
+      alert('참고 문서를 업로드해주세요.');
+      return;
+    }
+    if (!sample) {
+      alert('샘플 보고서를 입력해주세요.');
+      return;
+    }
+
+    const apiKey = sessionStorage.getItem('geminiApiKey');
+    const model = sessionStorage.getItem('geminiModel') || 'gemini-1.5-flash';
+
+    if (!apiKey) {
+      alert('설정에서 Gemini API 키를 입력해주세요.');
+      return;
+    }
+
+    const filesContents = await Promise.all(
+      files.map((file) =>
+        new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result as string);
+          reader.readAsText(file);
+        })
+      )
+    );
+
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        model,
+        filesContents,
+        sample,
+        prompt,
+        language,
+        volume,
+        needsTable,
+        needsGraph,
+      }),
+    });
+
+    if (!response.ok) {
+      alert('보고서 생성에 실패했습니다.');
+      return;
+    }
+
+    const { report } = await response.json();
+
+    const blob = new Blob([report], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'generated_report.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex justify-end mb-4">
+        <Link href="/settings">
+          <Button variant="outline">설정</Button>
+        </Link>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Easy Report Generator</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div>
+              <Label>참고 문서 업로드 (최대 5개, .md 파일)</Label>
+              <div {...getRootProps()} className="border-2 border-dashed p-4 rounded-md">
+                <input {...getInputProps()} />
+                <p>파일을 드래그하거나 클릭하여 업로드</p>
+              </div>
+              <ul>
+                {files.map((file, index) => (
+                  <li key={index}>{file.name}</li>
+                ))}
+              </ul>
+            </div>
+
+            <Separator />
+
+            <div>
+              <Label>샘플 보고서</Label>
+              <Select onValueChange={(value) => setUseSampleFile(value === 'file')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="샘플 입력 방식 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prompt">프롬프트 입력</SelectItem>
+                  <SelectItem value="file">파일 업로드</SelectItem>
+                </SelectContent>
+              </Select>
+              {useSampleFile ? (
+                <div {...sampleDropzone.getRootProps()} className="border-2 border-dashed p-4 rounded-md mt-2">
+                  <input {...sampleDropzone.getInputProps()} />
+                  <p>샘플 파일을 드래그하거나 클릭하여 업로드</p>
+                </div>
+              ) : (
+                <Textarea
+                  placeholder="샘플 보고서 형식 입력"
+                  value={sample}
+                  onChange={(e) => setSample(e.target.value)}
+                  className="mt-2"
+                />
+              )}
+            </div>
+
+            <Separator />
+
+            <div>
+              <Label>보고서 지침 (목적, 강조 사항 등)</Label>
+              <Textarea
+                placeholder="보고서의 성격, 목적, 강조 사항 입력"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>보고서 언어</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Korean">한국어</SelectItem>
+                  <SelectItem value="English">English</SelectItem>
+                  <SelectItem value="Chinese">中文</SelectItem>
+                  <SelectItem value="Japanese">日本語</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>문서 양</Label>
+              <Select value={volume} onValueChange={setVolume}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Short</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="long">Long</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex space-x-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="needsTable" checked={needsTable} onCheckedChange={setNeedsTable} />
+                <Label htmlFor="needsTable">표 필요</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="needsGraph" checked={needsGraph} onCheckedChange={setNeedsGraph} />
+                <Label htmlFor="needsGraph">그래프 필요</Label>
+              </div>
+            </div>
+
+            <Button onClick={handleGenerate}>보고서 생성</Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
