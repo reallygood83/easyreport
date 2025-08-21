@@ -70,7 +70,7 @@ export default function Home() {
         files.map((file) =>
           new Promise<string>((resolve) => {
             const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string ?? '');
+            reader.onload = (e) => resolve((e.target?.result as string) ?? '');
             reader.readAsText(file);
           })
         )
@@ -91,13 +91,21 @@ export default function Home() {
           pages,
           needsTable,
           needsGraph,
-          downloadFolder: sessionStorage.getItem('downloadFolder') || '',
         }),
       });
       console.log('Fetch response:', response.status);
 
       if (!response.ok) {
-        throw new Error('보고서 생성에 실패했습니다.');
+        let errDetail = '';
+        try {
+          const err = await response.json();
+          errDetail = err?.message || err?.error || '';
+        } catch {
+          try {
+            errDetail = await response.text();
+          } catch {}
+        }
+        throw new Error(`보고서 생성에 실패했습니다.${errDetail ? ' 서버 메시지: ' + errDetail : ''}`);
       }
 
       const data = await response.json();
