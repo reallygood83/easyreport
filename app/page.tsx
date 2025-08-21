@@ -20,6 +20,7 @@ export default function Home() {
   const [pages, setPages] = useState<number>(5);
   const [needsTable, setNeedsTable] = useState<boolean>(false);
   const [needsGraph, setNeedsGraph] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   const onDrop = (acceptedFiles: File[]) => {
     if (files.length + acceptedFiles.length > 5) {
@@ -65,6 +66,7 @@ export default function Home() {
         return;
       }
 
+      setIsGenerating(true);
       console.log('Reading file contents...');
       const filesContents = await Promise.all(
         files.map((file) =>
@@ -127,6 +129,8 @@ export default function Home() {
     } catch (error) {
       console.error('Error in report generation:', error);
       alert('보고서 생성 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -337,12 +341,25 @@ export default function Home() {
             <div className="pt-4">
               <Button 
                 onClick={handleGenerate} 
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+                disabled={isGenerating}
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                AI 보고서 생성하기
+                {isGenerating ? (
+                  <>
+                    <svg className="w-6 h-6 mr-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    AI 보고서 생성하기
+                  </>
+                )}
               </Button>
             </div>
           </div>
