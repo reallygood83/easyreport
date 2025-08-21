@@ -27,7 +27,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <main className="flex-1">{children}</main>
+          <footer className="border-t border-blue-100 bg-white/80 backdrop-blur-sm text-sm text-gray-600">
+            <div className="container mx-auto px-6 py-4 text-center">
+              © 2025 김문정 | <a href="https://www.youtube.com/@%EB%B0%B0%EC%9B%80%EC%9D%98%EB%8B%AC%EC%9D%B8-p5v" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">배움의 달인 유튜브</a>
+            </div>
+          </footer>
+        </div>
       </body>
     </html>
   );
