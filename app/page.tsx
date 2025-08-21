@@ -21,6 +21,8 @@ export default function Home() {
   const [needsTable, setNeedsTable] = useState<boolean>(false);
   const [needsGraph, setNeedsGraph] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [generationStep, setGenerationStep] = useState<string>('');
 
   const onDrop = (acceptedFiles: File[]) => {
     if (files.length + acceptedFiles.length > 5) {
@@ -67,7 +69,10 @@ export default function Home() {
       }
 
       setIsGenerating(true);
+      setGenerationProgress(0);
+      setGenerationStep('문서 분석 중...');
       console.log('Reading file contents...');
+      setGenerationProgress(20);
       const filesContents = await Promise.all(
         files.map((file) =>
           new Promise<string>((resolve) => {
@@ -78,8 +83,12 @@ export default function Home() {
         )
       );
       console.log('File contents read');
+      setGenerationProgress(40);
+      setGenerationStep('AI 분석 중...');
 
       console.log('Fetching /api/generate...');
+      setGenerationProgress(60);
+      setGenerationStep('보고서 생성 중...');
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,6 +105,8 @@ export default function Home() {
         }),
       });
       console.log('Fetch response:', response.status);
+      setGenerationProgress(80);
+      setGenerationStep('파일 처리 중...');
 
       if (!response.ok) {
         let errDetail = '';
@@ -112,6 +123,12 @@ export default function Home() {
 
       const data = await response.json();
       console.log('Response data:', data);
+      setGenerationProgress(100);
+      setGenerationStep('완료!');
+      
+      // 완료 애니메이션을 위한 짧은 지연
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       if (data.savedPath) {
         alert(`보고서가 ${data.savedPath}에 저장되었습니다.`);
       } else {
@@ -131,6 +148,8 @@ export default function Home() {
       alert('보고서 생성 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationStep('');
     }
   };
 
@@ -338,7 +357,29 @@ export default function Home() {
             </div>
 
             {/* Generate Button */}
-            <div className="pt-4">
+            <div className="pt-4 space-y-4">
+              {/* Progress Bar - 생성 중일 때만 표시 */}
+              {isGenerating && (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">{generationStep}</span>
+                    <span className="text-sm text-gray-500">{generationProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className="h-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${generationProgress}%` }}
+                    ></div>
+                  </div>
+                  {/* 애니메이션 도트 */}
+                  <div className="flex justify-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                </div>
+              )}
+              
               <Button 
                 onClick={handleGenerate} 
                 disabled={isGenerating}
@@ -350,7 +391,7 @@ export default function Home() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                     </svg>
-                    생성 중...
+                    {generationStep || '생성 중...'}
                   </>
                 ) : (
                   <>
