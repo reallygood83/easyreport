@@ -33,8 +33,12 @@ export default function Home() {
 
   const handleSampleFileDrop = (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
+      console.log('Sample file dropped:', acceptedFiles[0].name);
       const reader = new FileReader();
-      reader.onload = (e) => setSample(e.target?.result as string ?? '');
+      reader.onload = (e) => {
+        console.log('Sample file loaded:', e.target?.result);
+        setSample(e.target?.result as string ?? '');
+      };
       reader.readAsText(acceptedFiles[0]);
     }
   };
@@ -42,69 +46,79 @@ export default function Home() {
   const sampleDropzone = useDropzone({ onDrop: handleSampleFileDrop, accept: { 'text/markdown': ['.md'] }, maxFiles: 1 });
 
   const handleGenerate = async () => {
-    if (files.length === 0) {
-      alert('참고 문서를 업로드해주세요.');
-      return;
-    }
-    if (!sample) {
-      alert('샘플 보고서를 입력해주세요.');
-      return;
-    }
+    try {
+      console.log('Generate button clicked');
+      if (files.length === 0) {
+        alert('참고 문서를 업로드해주세요.');
+        return;
+      }
+      if (!sample) {
+        alert('샘플 보고서를 입력해주세요.');
+        return;
+      }
 
-    const apiKey = sessionStorage.getItem('geminiApiKey');
-    const model = sessionStorage.getItem('geminiModel') || 'gemini-1.5-flash';
+      const apiKey = sessionStorage.getItem('geminiApiKey');
+      const model = sessionStorage.getItem('geminiModel') || 'gemini-1.5-flash';
 
-    if (!apiKey) {
-      alert('설정에서 Gemini API 키를 입력해주세요.');
-      return;
-    }
+      if (!apiKey) {
+        alert('설정에서 Gemini API 키를 입력해주세요.');
+        return;
+      }
 
-    const filesContents = await Promise.all(
-      files.map((file) =>
-        new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target?.result as string ?? '');
-          reader.readAsText(file);
-        })
-      )
-    );
+      console.log('Reading file contents...');
+      const filesContents = await Promise.all(
+        files.map((file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string ?? '');
+            reader.readAsText(file);
+          })
+        )
+      );
+      console.log('File contents read');
 
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        model,
-        filesContents,
-        sample,
-        prompt,
-        language,
-        pages,
-        needsTable,
-        needsGraph,
-        downloadFolder: sessionStorage.getItem('downloadFolder') || '',
-      }),
-    });
+      console.log('Fetching /api/generate...');
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey,
+          model,
+          filesContents,
+          sample,
+          prompt,
+          language,
+          pages,
+          needsTable,
+          needsGraph,
+          downloadFolder: sessionStorage.getItem('downloadFolder') || '',
+        }),
+      });
+      console.log('Fetch response:', response.status);
 
-    if (!response.ok) {
-      alert('보고서 생성에 실패했습니다.');
-      return;
-    }
+      if (!response.ok) {
+        throw new Error('보고서 생성에 실패했습니다.');
+      }
 
-    const data = await response.json();
-    if (data.savedPath) {
-      alert(`보고서가 ${data.savedPath}에 저장되었습니다.`);
-    } else {
-      const { report } = data;
-      const blob = new Blob([report], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'generated_report.md';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const data = await response.json();
+      console.log('Response data:', data);
+      if (data.savedPath) {
+        alert(`보고서가 ${data.savedPath}에 저장되었습니다.`);
+      } else {
+        const { report } = data;
+        const blob = new Blob([report], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'generated_report.md';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error in report generation:', error);
+      alert('보고서 생성 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
     }
   };
 
